@@ -1,0 +1,6 @@
+{
+  "name": "compatra-action-fixture-clean",
+  "private": true,
+  "description": "Used by .github/workflows/action-self-test.yml — only uses non-deprecated Stripe endpoints.",
+  "dependencies": { "stripe": "^17.0.0" }
+}

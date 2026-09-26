@@ -1,0 +1,8 @@
+{
+  "name": "compatra-action-fixture-verify-handled",
+  "private": true,
+  "type": "module",
+  "description": "Used by .github/workflows/action-self-test.yml. Calls the same deprecated endpoint but falls back to an empty list, so its tests survive the endpoint disappearing.",
+  "scripts": { "test": "node --test" },
+  "dependencies": { "stripe": "file:../verify-broken/fake-stripe" }
+}

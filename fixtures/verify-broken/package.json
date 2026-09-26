@@ -1,0 +1,8 @@
+{
+  "name": "compatra-action-fixture-verify-broken",
+  "private": true,
+  "type": "module",
+  "description": "Used by .github/workflows/action-self-test.yml. Calls a deprecated Stripe endpoint and has no fallback, so its tests fail when that endpoint disappears.",
+  "scripts": { "test": "node --test" },
+  "dependencies": { "stripe": "file:./fake-stripe" }
+}

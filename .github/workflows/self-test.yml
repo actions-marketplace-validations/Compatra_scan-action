@@ -1,0 +1,103 @@
+name: Self-test
+
+# Runs the action against fixtures under the real Actions runtime. Two check the scan (a real,
+# currently deprecated Stripe call must fail the step; a clean project must pass) and two check
+# `verify` (tests that genuinely reach the flagged endpoint over HTTP: one with no fallback must
+# report broken, one that copes must report handled).
+#
+# It also runs weekly: the fixtures rely on Stripe still marking one endpoint deprecated, so a
+# failure here on a quiet week means a vendor changed, not that this repository did.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  expect-finding:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./
+        id: scan
+        continue-on-error: true
+        with:
+          path: fixtures/has-finding
+      - name: Assert the scan found it and failed the step
+        env:
+          OUTCOME: ${{ steps.scan.outcome }}
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+        run: |
+          [ "$OUTCOME" = "failure" ] || { echo "expected the step to fail, got: $OUTCOME"; exit 1; }
+          [ "$FINDINGS" = "1" ] || { echo "expected findings=1, got: $FINDINGS"; exit 1; }
+          echo "OK: failed with findings=$FINDINGS"
+
+  expect-clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: ./
+        id: scan
+        with:
+          path: fixtures/clean
+      - name: Assert the scan passed with zero findings
+        env:
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+        run: |
+          [ "$FINDINGS" = "0" ] || { echo "expected findings=0, got: $FINDINGS"; exit 1; }
+          echo "OK: passed with findings=$FINDINGS"
+
+  # These two fixtures call the same deprecated Stripe endpoint through a local stand-in package that
+  # makes real HTTP requests to a server the tests start, so the tests genuinely reach the endpoint.
+  expect-broken:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: npm install --no-audit --no-fund
+        working-directory: fixtures/verify-broken
+      - uses: ./
+        id: scan
+        continue-on-error: true
+        with:
+          path: fixtures/verify-broken
+          verify: "true"
+          any-host: "true"
+      - name: Assert the suite was shown to break
+        env:
+          OUTCOME: ${{ steps.scan.outcome }}
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+          BROKEN: ${{ steps.scan.outputs.broken }}
+        run: |
+          [ "$OUTCOME" = "failure" ] || { echo "expected the step to fail, got: $OUTCOME"; exit 1; }
+          [ "$FINDINGS" = "1" ] || { echo "expected findings=1, got: $FINDINGS"; exit 1; }
+          [ "$BROKEN" = "1" ] || { echo "expected broken=1, got: $BROKEN"; exit 1; }
+          echo "OK: findings=$FINDINGS broken=$BROKEN"
+
+  expect-handled:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - run: npm install --no-audit --no-fund
+        working-directory: fixtures/verify-handled
+      - uses: ./
+        id: scan
+        with:
+          path: fixtures/verify-handled
+          verify: "true"
+          any-host: "true"
+          # The deprecated call is still there; this job is about the verdict, not the finding.
+          fail-on-finding: "false"
+      - name: Assert the endpoint was reached and the suite survived
+        env:
+          FINDINGS: ${{ steps.scan.outputs.findings }}
+          BROKEN: ${{ steps.scan.outputs.broken }}
+        run: |
+          [ "$FINDINGS" = "1" ] || { echo "expected findings=1, got: $FINDINGS"; exit 1; }
+          [ "$BROKEN" = "0" ] || { echo "expected broken=0, got: $BROKEN"; exit 1; }
+          echo "OK: findings=$FINDINGS broken=$BROKEN"

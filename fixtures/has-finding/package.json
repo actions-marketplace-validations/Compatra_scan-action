@@ -1,0 +1,6 @@
+{
+  "name": "compatra-action-fixture-has-finding",
+  "private": true,
+  "description": "Used by .github/workflows/action-self-test.yml — calls a real, currently-deprecated Stripe endpoint on purpose.",
+  "dependencies": { "stripe": "^17.0.0" }
+}

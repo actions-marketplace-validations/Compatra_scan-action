@@ -1,0 +1,83 @@
+name: Compatra scan
+description: >
+  Find third-party API calls in your code that use endpoints the vendor has already
+  deprecated, and optionally check whether your own tests would notice one disappearing.
+  Runs on your runner; nothing is uploaded.
+author: Compatra
+branding:
+  icon: shield
+  color: blue
+
+inputs:
+  path:
+    description: Path to scan, relative to the workflow's checkout.
+    required: false
+    default: "."
+  fail-on-finding:
+    description: Fail the step when a deprecated endpoint is in use.
+    required: false
+    default: "true"
+  node-version:
+    description: Node.js version to run the scan with (verify needs 22 or newer). This becomes the job's Node for later steps too.
+    required: false
+    default: "22"
+  verify:
+    description: >
+      Also run your tests with each flagged endpoint simulated as gone, to see whether your suite
+      notices. Install your dependencies before this step; it runs your own test command.
+    required: false
+    default: "false"
+  test-command:
+    description: The command that runs your tests, from the scanned path. Used when verify is true.
+    required: false
+    default: "npm test"
+  fail-on-broken:
+    description: With verify, fail the step when a simulated failure breaks your tests, or when your tests do not pass to begin with.
+    required: false
+    default: "true"
+  any-host:
+    description: >
+      With verify, match the endpoint on any host. For tests that point an SDK at stripe-mock or a
+      local proxy instead of the vendor's real host.
+    required: false
+    default: "false"
+  verify-timeout:
+    description: Seconds allowed for each run of your tests.
+    required: false
+    default: "600"
+
+outputs:
+  findings:
+    description: Number of call sites that may use a deprecated endpoint.
+    value: ${{ steps.run.outputs.findings }}
+  broken:
+    description: With verify, the number of flagged endpoints whose simulated failure broke your tests.
+    value: ${{ steps.run.outputs.broken }}
+
+runs:
+  using: composite
+  steps:
+    # Pinned by commit, not by tag: a moved tag must not be able to change what runs in your CI.
+    - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: ${{ inputs.node-version }}
+    # The scan engine is the published `compatra` package, at the exact version this release of the
+    # action was tested with. Its install scripts are skipped (it has none).
+    - name: Install Compatra
+      shell: bash
+      env:
+        COMPATRA_VERSION: "0.1.2"
+      run: npm install --prefix "$RUNNER_TEMP/compatra" --no-audit --no-fund --no-save --ignore-scripts "compatra@${COMPATRA_VERSION}"
+    - name: Scan
+      id: run
+      shell: bash
+      env:
+        COMPATRA_DIST: ${{ runner.temp }}/compatra/node_modules/compatra/dist
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_FAIL_ON_FINDING: ${{ inputs.fail-on-finding }}
+        INPUT_VERIFY: ${{ inputs.verify }}
+        INPUT_TEST_COMMAND: ${{ inputs.test-command }}
+        INPUT_FAIL_ON_BROKEN: ${{ inputs.fail-on-broken }}
+        INPUT_ANY_HOST: ${{ inputs.any-host }}
+        INPUT_VERIFY_TIMEOUT: ${{ inputs.verify-timeout }}
+      run: node "${{ github.action_path }}/run.mjs"
