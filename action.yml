@@ -63,7 +63,7 @@ runs:
     - name: Install Compatra
       shell: bash
       env:
-        COMPATRA_VERSION: "0.1.2"
+        COMPATRA_VERSION: "0.1.3"
       run: npm install --prefix "$RUNNER_TEMP/compatra" --no-audit --no-fund --no-save --ignore-scripts "compatra@${COMPATRA_VERSION}"
     - name: Scan
       id: run
