@@ -1,8 +1,5 @@
 name: Compatra scan
-description: >
-  Find third-party API calls in your code that use endpoints the vendor has already
-  deprecated, and optionally check whether your own tests would notice one disappearing.
-  Runs on your runner; nothing is uploaded.
+description: "Find API calls that use endpoints vendors have deprecated, and check whether your tests would notice one disappearing."
 author: Compatra
 branding:
   icon: shield
